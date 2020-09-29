@@ -1,0 +1,49 @@
+name: Twilio Resources - Preview 
+on:
+  pull_request:
+    branches:
+      - production
+      - staging
+    paths:
+      - src/**
+jobs:
+  preview:
+    name: Preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: npm install
+        run: |
+          npm install
+      - name: Create variables
+        id: vars 
+        run: |
+          branch=${GITHUB_BASE_REF#refs/heads/} 
+          echo "::set-output name=TWILIO_ACCOUNT_SID_VAR::TWILIO_${branch^^}_ACCOUNT_SID"
+          echo "::set-output name=TWILIO_AUTH_TOKEN_VAR::TWILIO_${branch^^}_AUTH_TOKEN"
+          echo "::set-output name=BRANCH_NAME::${branch}"
+      - name: Check or create stack
+        shell: bash
+        run: pulumi stack init $BRANCH_NAME || echo "Stack already exists"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          BRANCH_NAME: ${{steps.vars.outputs.BRANCH_NAME}}
+      - uses: docker://pulumi/actions
+        with:
+          args: preview --stack $BRANCH_NAME
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          PULUMI_CI: pr
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMMENT_ON_PR: 1
+          PULUMI_ROOT: src/resources
+          BRANCH_NAME: ${{steps.vars.outputs.BRANCH_NAME}}
+          TWILIO_ACCOUNT_SID: ${{ secrets[steps.vars.outputs.TWILIO_ACCOUNT_SID_VAR]}}
+          TWILIO_AUTH_TOKEN: ${{ secrets[steps.vars.outputs.TWILIO_AUTH_TOKEN_VAR]}}
+

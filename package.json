@@ -1,0 +1,20 @@
+{
+  "name": "power-dialer",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "ci:deploy-resources": "export $(cat .$BRANCH_NAME.env | xargs) && pulumi up --stack $BRANCH_NAME --yes",
+    "ci:preview-resources": "export $(cat .$BRANCH_NAME.env | xargs) && METHOD=preview pulumi preview --stack $BRANCH_NAME",
+    "deploy-resources": "export $(cat .dev.env | xargs) && pulumi up --stack $BRANCH_NAME",
+    "preview-resources": "export $(cat .dev.env | xargs) && METHOD=preview pulumi preview --stack $BRANCH_NAME",
+    "watch-resources": "export $(cat .dev.env | xargs) && pulumi watch --stack $BRANCH_NAME"
+  },
+  "dependencies": {
+    "@pulumi/pulumi": "^2.0.0",
+    "twilio-pulumi-provider": "^0.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^14.6.4",
+    "typescript": "^4.0.2"
+  }
+}

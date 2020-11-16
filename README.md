@@ -2,7 +2,7 @@
 
 ## Documentation 
 
-To understand every details and decisions made along the project, please check the [this documentation](https://drive.google.com/file/d/1GFxVzA8p4Fsl8D2DiYkavKjVeOygeHfj/view?usp=sharing).
+To understand every details and decisions made along the project, please check the [this documentation](https://docs.google.com/document/d/1hR45Zf8Czl0xmeHlNsbloPFvWjtrNa072fy4os1KVfU/edit?usp=sharing).
 
 ## Deploy 
 

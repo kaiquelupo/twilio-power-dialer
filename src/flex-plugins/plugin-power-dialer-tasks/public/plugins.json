@@ -1,0 +1,13 @@
+[
+  {
+    "name": "plugin-power-dialer-tasks",
+    "version": "0.0.0",
+    "class": "PowerDialerTasksPlugin",
+    "requires": [
+      {
+        "@twilio/flex-ui": "^1"
+      }
+    ],
+    "src": "http://localhost:3000/plugin-power-dialer-tasks.js"
+  }
+]

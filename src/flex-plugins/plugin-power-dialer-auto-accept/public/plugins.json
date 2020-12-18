@@ -1,0 +1,13 @@
+[
+  {
+    "name": "plugin-power-dialer-auto-accept",
+    "version": "0.0.0",
+    "class": "PowerDialerAutoAcceptPlugin",
+    "requires": [
+      {
+        "@twilio/flex-ui": "^1"
+      }
+    ],
+    "src": "http://localhost:3000/plugin-power-dialer-auto-accept.js"
+  }
+]

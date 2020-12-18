@@ -1,0 +1,25 @@
+.pdTableWrapper {
+    width: 100%;
+    padding: 40px;
+    overflow-y: auto;
+}
+
+.header { 
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    margin-bottom: 40px;
+}
+
+.headerButtons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin-top: 5px;
+    height: auto;
+}
+
+.moreTasksInfo {
+    margin-top: 20px;
+    font-weight: bold;
+}

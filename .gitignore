@@ -112,5 +112,4 @@ dist
 .pnp.*
 
 .twilio-functions
-.dev.env
-.dev-*.env
+.env

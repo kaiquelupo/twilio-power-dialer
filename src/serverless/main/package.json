@@ -3,9 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "twilio-run --env"
+  },
+  "devDependencies": {
+    "twilio-run": "^2.0.0"
+  },
+  "engines": {
+    "node": "8.10.0"
   },
   "dependencies": {
-    "moment": "^2.29.0"
+    "axios": "^0.20.0",
+    "lodash": "^4.17.20",
+    "moment": "^2.29.0",
+    "twilio": "^3.50.0",
+    "twilio-flex-token-validator": "^1.5.4"
   }
 }

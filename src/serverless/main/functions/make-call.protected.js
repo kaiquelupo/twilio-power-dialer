@@ -6,13 +6,13 @@ const concurrencyBarrier = function(client, context, queue) {
 }
 
 exports.handler = async function(context, event, callback) {
-    
+
     const client = context.getTwilioClient();
     
     const taskSid = event.TaskSid;
     
     const attributes = event.TaskAttributes;
-    const { numbers, currentNumberIdx, queue, channel, attempts, retries, conversations } = JSON.parse(attributes);
+    const { numbers, currentNumberIdx, queue, channel, attempts, retries, conversations, requiredInfo } = JSON.parse(attributes);
     const { DOMAIN, TWILIO_NUMBER } = context;
     
     const workerAttributes = event.WorkerAttributes;
@@ -28,11 +28,16 @@ exports.handler = async function(context, event, callback) {
             try {
                 
             	const call = await client.calls.create({
-                    url: `https://${DOMAIN}/evaluate-call?taskSid=${taskSid}&queue=${queue}`,
+                    url: `https://${DOMAIN}/play-audio`,
                     statusCallback: `https://${DOMAIN}/evaluate-complete-call?taskSid=${taskSid}&queue=${queue}`,
                     to: numbers[currentNumberIdx],
                     from: TWILIO_NUMBER,
-                    machineDetection: 'Enable'
+                    machineDetection: 'Enable',
+                    machineDetectionTimeout: 5,
+                    asyncAmd: "true",
+                    machineDetectionSilenceTimeout: 3000,
+                    asyncAmdStatusCallback: `https://${DOMAIN}/evaluate-call?taskSid=${taskSid}&queue=${queue}`
+
                 });
                 
                 console.log(call);
@@ -44,26 +49,61 @@ exports.handler = async function(context, event, callback) {
                 
                 console.log(err);
             } 
+
+            if(!error) {
             
-            await assets.updateTaskToReporting(client, context, taskSid, () => ({
-                ...JSON.parse(attributes),
-                conversations: {
-                    conversation_id: (conversations && conversations.conversation_id) || taskSid,
-                    conversation_attribute_6: attempts,
-                    conversation_attribute_7: retries,
-                    external_contact: TWILIO_NUMBER,
-                    direction: "Outbound",
-                    initiated_by: "Power Dialer" 
-                },
-                customers: {
-                    phone: numbers[currentNumberIdx]
-                }
-            })); 
+                await assets.updateTaskToReporting(client, context, taskSid, () => ({
+                    ...JSON.parse(attributes),
+                    conversations: {
+                        conversation_id: (conversations && conversations.conversation_id) || taskSid,
+                        content: "Trying to call",
+                        conversation_attribute_6: attempts,
+                        conversation_attribute_7: retries,
+                        external_contact: TWILIO_NUMBER,
+                        campaign: requiredInfo.campaign,
+                        direction: "Outbound",
+                        initiated_by: "Power Dialer",
+                        workflow: "Power Dialer" 
+                    },
+                    customers: {
+                        name: requiredInfo.name,
+                        phone: numbers[currentNumberIdx]
+                    }
+                }));
+
+                callback(null, { 'instruction' : 'accept' });
+        
+            } else {
+
+                await assets.updateTaskToReporting(client, context, taskSid, () => ({
+                    ...JSON.parse(attributes),
+                    conversations: {
+                        conversation_id: (conversations && conversations.conversation_id) || taskSid,
+                        content: "Error trying to call",
+                        conversation_attribute_6: attempts,
+                        conversation_attribute_7: retries,
+                        external_contact: TWILIO_NUMBER,
+                        campaign: requiredInfo.campaign,
+                        direction: "Outbound",
+                        initiated_by: "Power Dialer" 
+                    },
+                    customers: {
+                        name: requiredInfo.name,
+                        phone: numbers[currentNumberIdx]
+                    }
+                }));
+
+                await client.taskrouter.workspaces(context.WORKSPACE_SID)
+                    .tasks(taskSid)
+                    .update({
+                        assignmentStatus: 'canceled',
+                        reason: `${error.status} - ${error.message}`
+                    });
+        
+            }
+        
         }
-        
-        callback(null, { 'instruction' : 'accept' });
-        
-    } else {
-        callback(null);
-    }
+    } 
+
+    callback(null);
 }

@@ -17,6 +17,12 @@ const finishDialerTask = async function (client, workspaceSid, taskSid) {
       });
 }
 
+const getDialerTask = async function (client, workspaceSid, taskSid) {
+    return client.taskrouter.workspaces(workspaceSid)
+        .tasks(taskSid)
+        .fetch()
+ }
+
 const updateCurrentNumberIdx = async function(client, workspaceSid, task, newValue) {
     
     const { sid, attributes } = task;
@@ -54,25 +60,20 @@ const makeCall = async function(client, task, currentNumberIdx) {
 exports.handler = async function(context, event, callback) {
     
     const client = context.getTwilioClient();
+
+    const task = await getDialerTask(client, context.WORKSPACE_SID, event.taskSid);
     
-    console.log(event);
-    
-    if(event.AnsweredBy !== "human") {
+    if(task.assignmentStatus !== "completed") {
         
         await assets.changeDialerCapacity(client, context, [event.queue]);
         
-    //    await assets.updateTaskToReporting(client, context, event.taskSid, (attrs) => ({
-    //         ...attrs,
-    //         conversations: {
-    //             ...attrs.conversations,
-    //             conversation_attribute_5: "Tried to call"
-    //         }
-    //     }));
-        
-        const task = await 
-                client.taskrouter.workspaces(context.WORKSPACE_SID)
-                 .tasks(event.taskSid)
-                 .fetch();
+       await assets.updateTaskToReporting(client, context, event.taskSid, (attrs) => ({
+            ...attrs,
+            conversations: {
+                ...attrs.conversations,
+                content: "Tried to call"
+            }
+        }));
 
         const attributes = JSON.parse(task.attributes);
         
@@ -93,7 +94,8 @@ exports.handler = async function(context, event, callback) {
                      ...attributes,
                      conversations: {
                        ...attributes.conversations,
-                        conversation_attribute_6: attributes.attempts + 1
+                        conversation_attribute_6: attributes.attempts + 1,
+                        content: "Retrying"
                      },
                      attempts: attributes.attempts + 1,
                      callAfterTime: parseInt(recalculateCallAfterTime()),

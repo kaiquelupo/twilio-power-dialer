@@ -1,21 +1,31 @@
-import { CheckServerless, Resource, Serverless } from 'twilio-pulumi-provider';
+import { CheckServerless, Resource, Serverless, FlexPlugin } from 'twilio-pulumi-provider';
 import * as pulumi from '@pulumi/pulumi';
 import { getTaskRouterStructure } from './taskrouter';
 import * as fs from 'fs';
 
 const { queues } = getTaskRouterStructure();
 
+const { OVERRIDE_FLEX_WORKSPACE_EVENT_CALLBACK } = process.env;
+
 const stack = pulumi.getStack();
 
 const serviceName = 'power-dialer-serverless';
 const domain = CheckServerless.getDomainName(serviceName, stack);
 
+let flexWorkspaceAttributes = {
+    sid: process.env.FLEX_WORKSPACE_SID,
+}
+
+if(OVERRIDE_FLEX_WORKSPACE_EVENT_CALLBACK === "YES") {
+
+    flexWorkspaceAttributes["eventCallbackUrl"] =  
+        pulumi.all([domain]).apply(([ domain ]) => `https://${domain}/event-handler`);
+        
+}
+
 const flexWorkspace = new Resource("flex-workspace", {
     resource: ["taskrouter", "workspaces"],
-    attributes: {
-        sid: process.env.FLEX_WORKSPACE_SID,
-        eventCallbackUrl: pulumi.all([domain]).apply(([ domain ]) => `https://${domain}/event-handler`)
-    }
+    attributes: flexWorkspaceAttributes
 });
 
 const allQueuesResources:any[] = [];  
@@ -49,7 +59,7 @@ for(let i = 0; i < queues.length; i++){
     const commonQueue = new Resource(`${name}-taskQueue`, {
         resource: ["taskrouter", { "workspaces" : flexWorkspace.sid }, "taskQueues"],
         attributes: {
-            targetWorkers: `bot != true AND queues HAS "${name}"`,
+            targetWorkers: `"${name}" in routing.skills`,
             friendlyName: name
         }
     });
@@ -89,26 +99,6 @@ for(let i = 0; i < queues.length; i++){
 
 }
 
-const heartbeatQueue = new Resource(`heartbeat-taskQueue`, {
-    resource: ["taskrouter", { "workspaces" : flexWorkspace.sid }, "taskQueues"],
-    attributes: {
-        targetWorkers: "1=0",
-        friendlyName: "Heartbeat Queue"
-    }
-});
-
-filters.push({
-    friendlyName: "Heartbeat Filter",
-    expression: `heartbeat == true`,
-    targets: [
-        {
-            queue: heartbeatQueue.sid,
-            timeout: 60
-        }   
-    ]
-});
-
-
 const workflow = new Resource("power-dialer-workflow", {
     resource: ["taskrouter", { "workspaces" : flexWorkspace.sid }, "workflows"],
     attributes: {
@@ -145,9 +135,42 @@ const serverless = new Serverless("power-dialer-functions-assets", {
         pkgJson: require("../serverless/main/package.json")
     }
 });
+
+const flexPlugin = new FlexPlugin("power-dialer-list-flex-plugin", { 
+    attributes: {
+        cwd: "../flex-plugins/plugin-power-dialer-list",
+        env: pulumi.all([domain]).apply(([ domain ]) => (
+            {
+                REACT_APP_SERVICE_BASE_URL: domain
+            }
+        ))
+    }
+});
  
+const flexTasksPlugin = new FlexPlugin("power-dialer-tasks-flex-plugin", { 
+    attributes: {
+        cwd: "../flex-plugins/plugin-power-dialer-tasks",
+        env: pulumi.all([domain]).apply(([ domain ]) => (
+            {
+                REACT_APP_SERVICE_BASE_URL: domain
+            }
+        ))
+    }
+});
+
+const flexAutoAcceptPlugin = new FlexPlugin("power-dialer-auto-accept-flex-plugin", { 
+    attributes: {
+        cwd: "../flex-plugins/plugin-power-dialer-auto-accept",
+        env: {}
+    }
+});
+ 
+
 export let output =  {
     flexWorkspaceSid: flexWorkspace.sid,
     workflowSid: workflow.sid,
-    serverlessSid: serverless.sid
+    serverlessSid: serverless.sid,
+    flexPluginSid: flexPlugin.sid,
+    flexTasksPluginSid: flexTasksPlugin.sid,
+    flexAutoAcceptPluginSid: flexAutoAcceptPlugin.sid
 }

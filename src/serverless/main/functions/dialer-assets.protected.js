@@ -28,19 +28,24 @@ exports.changeDialerCapacity = async function (client, context, queues, params )
         } 
         
         return await Promise.all(queues.map(async (currentQueue) => {
+
+            const queue = queueMap[currentQueue];
+
+            if(queue){
             
-            const { sid, dialer } = queueMap[currentQueue];
+                const { sid, dialer } = queue;
+                
+                let capacity = (params && params.forceCapacity);
             
-            let capacity = (params && params.forceCapacity);
+                if(capacity == null) {
+                    capacity = await getAvailableWorkersFromQueue(client, context, sid);
+                }
         
-            if(capacity == null) {
-              capacity = await getAvailableWorkersFromQueue(client, context, sid);
+                return await client.taskrouter.workspaces(context.WORKSPACE_SID)
+                    .workers(dialer)
+                    .workerChannels("default")
+                    .update({ capacity: (capacity > 0) ? capacity : 0 });
             }
-     
-            return await client.taskrouter.workspaces(context.WORKSPACE_SID)
-              .workers(dialer)
-              .workerChannels("default")
-              .update({ capacity: (capacity > 0) ? capacity : 0 });
             
         }));
         

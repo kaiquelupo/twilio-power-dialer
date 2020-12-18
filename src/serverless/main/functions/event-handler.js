@@ -22,9 +22,7 @@ exports.handler = async function(context, event, callback) {
     if(event.EventType === "task.created" && attributes.dialer == false) {
         await changeOutboundCallTaskToBeAcceptedByFlex(client, context, event, attributes);
     }
-    
-    console.log(event);
-    
+        
     //events that could change dialer behaviour
     if(
         event.EventType === "worker.activity.update" ||
